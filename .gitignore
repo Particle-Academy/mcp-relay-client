@@ -1,0 +1,9 @@
+# Go build output
+connect
+connect.exe
+# Editor / OS
+.DS_Store
+*.swp
+.idea/
+.vscode/
+node_modules/

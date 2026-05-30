@@ -1,0 +1,84 @@
+# mcp-relay-client
+
+A **super-lite, single-file MCP client** for connecting an agent to a
+**session-based MCP relay** — the protocol shipped by
+[`@particle-academy/agent-integrations`](https://ui.particle.academy). Point it
+at a relay session URL (like the [Fancy UI Agent
+Playground](https://ui.particle.academy/agent-playground)) and it speaks MCP to
+whatever app is hosting the session: list tools, call them, stream events.
+
+Pick the language you already have — each file is **self-contained, zero
+dependencies**, and downloadable on its own:
+
+| File | Runtime | Run |
+|---|---|---|
+| [`connect.sh`](./connect.sh) | bash + curl | `bash connect.sh <url> tools` |
+| [`connect.py`](./connect.py) | Python 3.8+ | `python3 connect.py <url> tools` |
+| [`connect.ts`](./connect.ts) | Node 22 / Bun / Deno / tsx | `bun connect.ts <url> tools` |
+| [`connect.go`](./connect.go) | Go | `go run connect.go <url> tools` |
+
+```bash
+# download just the one you want
+curl -O https://raw.githubusercontent.com/Particle-Academy/mcp-relay-client/main/connect.sh
+```
+
+## The connection URL (and the "inline key")
+
+Pass whatever connection URL you were handed. The **token** (the inline key) may
+be embedded in the URL or supplied out-of-band via `MCP_TOKEN`. All of these
+work:
+
+```
+https://host/agent-playground?session=ABC&token=XYZ      # playground share URL
+https://host/whiteboard-share/ABC?token=XYZ              # relay session URL
+https://host/whiteboard-share/ABC/inbox?token=XYZ        # full inbox endpoint
+https://host/whiteboard-share/ABC                        # + MCP_TOKEN=XYZ
+```
+
+The client derives the relay endpoints (`…/<session>/inbox` and
+`…/<session>/events`), the session id, and the token from the URL.
+
+## Commands
+
+```bash
+connect <url> tools                  # initialize + list the host's tools
+connect <url> call <name> ['<json>']  # call a tool (arguments default to {})
+connect <url> send '<jsonrpc-frame>'  # send a raw JSON-RPC 2.0 frame
+connect <url> watch                   # stream every frame the host emits
+```
+
+### Example — drive the Agent Playground
+
+```bash
+URL='https://ui.particle.academy/agent-playground?session=ABC&token=XYZ'
+
+bash connect.sh "$URL" tools
+bash connect.sh "$URL" call screens_create '{"id":"board","kind":"whiteboard"}'
+bash connect.sh "$URL" call screens_navigate '{"screen":"board"}'
+bash connect.sh "$URL" call whiteboard_add_sticky '{"x":300,"y":200,"text":"hello from an agent","color":"#fde68a"}'
+```
+
+## Environment
+
+| Var | Default | Meaning |
+|---|---|---|
+| `MCP_TOKEN` | — | Token, if not inline in the URL. |
+| `MCP_RELAY_PATH` | `whiteboard-share` | Relay mount path (apps that mount it elsewhere). |
+| `MCP_INSECURE` | unset | Skip TLS verification (self-signed certs / local dev only). |
+
+## How it works
+
+The relay is two HTTP endpoints, both token-gated:
+
+- **Send:** `POST {base}/{session}/inbox?token=…` — a JSON-RPC frame, fanned out
+  to the host's in-page `MicroMcpServer`.
+- **Receive:** `GET {base}/{session}/events?token=…&direction=outbound` — an SSE
+  stream of the host's response frames.
+
+The client subscribes to the SSE stream, runs the MCP `initialize` handshake,
+then sends `tools/list` / `tools/call` and correlates responses by JSON-RPC id.
+The host renders; the agent drives — humans and agents share the same surface.
+
+## License
+
+MIT © Particle Academy
