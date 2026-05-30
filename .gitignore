@@ -7,3 +7,4 @@ connect.exe
 .idea/
 .vscode/
 node_modules/
+__pycache__/
