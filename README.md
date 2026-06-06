@@ -1,5 +1,7 @@
 # mcp-relay-client
 
+[![Fancy UI suite](art/fancy-ui.svg)](https://particle.academy)
+
 A **super-lite, single-file MCP client** for connecting an agent to a
 **session-based MCP relay** — the protocol shipped by
 [`@particle-academy/agent-integrations`](https://ui.particle.academy). Point it
