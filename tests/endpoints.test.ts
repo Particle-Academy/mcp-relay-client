@@ -5,15 +5,15 @@ describe("endpoints", () => {
   it("resolves a share URL (?session=&token=) against the default relay path", () => {
     const ep = endpoints("https://ui.particle.academy/agent-playground?session=ABC&token=XYZ");
     expect(ep.session).toBe("ABC");
-    expect(ep.inbox).toBe("https://ui.particle.academy/whiteboard-share/ABC/inbox?token=XYZ");
+    expect(ep.inbox).toBe("https://ui.particle.academy/agent-relay/ABC/inbox?token=XYZ");
     expect(ep.events).toBe(
-      "https://ui.particle.academy/whiteboard-share/ABC/events?token=XYZ&direction=outbound",
+      "https://ui.particle.academy/agent-relay/ABC/events?token=XYZ&direction=outbound",
     );
   });
 
   it("accepts ?key= as the token alias", () => {
     const ep = endpoints("https://x.test/?session=S1&key=K1");
-    expect(ep.inbox).toContain("/S1/inbox?token=K1");
+    expect(ep.inbox).toBe("https://x.test/agent-relay/S1/inbox?token=K1");
   });
 
   it("resolves a direct relay path URL and strips a trailing inbox/events/outbox segment", () => {

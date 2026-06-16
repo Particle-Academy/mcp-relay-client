@@ -6,7 +6,7 @@ export type Endpoints = { session: string; inbox: string; events: string };
 export type EndpointOptions = {
   /** Explicit token; falls back to ?token=/?key= in the URL. */
   token?: string;
-  /** Relay mount path. Default "whiteboard-share" (the agent-integrations broker). */
+  /** Relay mount path. Default "agent-relay" (the agent-integrations broker). */
   relayPath?: string;
 };
 
@@ -22,7 +22,7 @@ export type EndpointOptions = {
  */
 export function endpoints(rawUrl: string, opts: EndpointOptions = {}): Endpoints {
   const u = new URL(rawUrl);
-  const relayPath = (opts.relayPath ?? "whiteboard-share").replace(/^\/|\/$/g, "");
+  const relayPath = (opts.relayPath ?? "agent-relay").replace(/^\/|\/$/g, "");
   const token = opts.token || u.searchParams.get("token") || u.searchParams.get("key") || "";
 
   let session = "";

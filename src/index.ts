@@ -42,7 +42,7 @@ As an MCP server (mount a live browser session in any MCP client):
 
 Options / env
   --token <tok>     MCP_TOKEN      session token (if not in the URL)
-  --relay <path>    MCP_RELAY_PATH relay mount path (default whiteboard-share)
+  --relay <path>    MCP_RELAY_PATH relay mount path (default agent-relay)
   --insecure        MCP_INSECURE   skip TLS verification (self-signed, local dev)
   --help -h         --version -v`;
 
