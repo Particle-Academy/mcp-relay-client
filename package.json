@@ -1,0 +1,54 @@
+{
+  "name": "mcp-relay-client",
+  "version": "0.1.0",
+  "description": "Zero-install MCP client + stdio bridge for agent-integrations relay sessions. Point any MCP client (Claude Code/Desktop/Cursor) — or your shell — at a live browser-hosted Fancy UI MCP server.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Particle-Academy/mcp-relay-client.git"
+  },
+  "homepage": "https://ui.particle.academy/docs/mcp",
+  "bugs": "https://github.com/Particle-Academy/mcp-relay-client/issues",
+  "type": "module",
+  "bin": {
+    "mcp-relay-client": "./dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "lint": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "clean": "rm -rf dist",
+    "prepublishOnly": "tsup"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "relay",
+    "agent",
+    "agent-integrations",
+    "fancy-ui",
+    "particle-academy",
+    "stdio",
+    "cli",
+    "bridge"
+  ],
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "tsup": "^8.5.0",
+    "typescript": "^5.8.0",
+    "vitest": "^3.2.0"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "license": "MIT"
+}

@@ -2,15 +2,48 @@
 
 [![Fancy UI suite](art/fancy-ui.svg)](https://particle.academy)
 
-A **super-lite, single-file MCP client** for connecting an agent to a
-**session-based MCP relay** — the protocol shipped by
+Connect an agent to a **session-based MCP relay** — the protocol shipped by
 [`@particle-academy/agent-integrations`](https://ui.particle.academy). Point it
-at a relay session URL (like the [Fancy UI Agent
-Playground](https://ui.particle.academy/agent-playground)) and it speaks MCP to
-whatever app is hosting the session: list tools, call them, stream events.
+at a relay session URL (the **Add-to-Claude / share link** from any app that
+mounts the relay — the [Fancy UI Agent
+Playground](https://ui.particle.academy/agent-playground) or a site-wide
+co-browse session) and it speaks MCP to whatever app is hosting the session:
+list tools, call them, stream events, or **bridge a real MCP client into the
+live browser surface**.
 
-Pick the language you already have — each file is **self-contained, zero
-dependencies**, and downloadable on its own:
+## Zero-install (npx) — recommended
+
+No download, no install. The package is the bin:
+
+```bash
+npx -y mcp-relay-client <url> tools                 # list the host's tools
+npx -y mcp-relay-client <url> call <name> '<json>'  # call a tool
+npx -y mcp-relay-client <url>                        # stdio MCP bridge (no subcommand)
+```
+
+### Mount a live browser session in your MCP client
+
+Run with **no subcommand** and the CLI becomes a **stdio MCP server** that
+bridges your client to the relay session. Drop it into any MCP client config —
+Claude Code, Claude Desktop, Cursor — and the agent drives the live page
+directly (tools, results, and the host's `notifications/agent_activity` reverse
+channel all flow through):
+
+```json
+{
+  "mcpServers": {
+    "fancy-session": {
+      "command": "npx",
+      "args": ["-y", "mcp-relay-client", "https://ui.particle.academy/?session=ABC&token=XYZ"]
+    }
+  }
+}
+```
+
+## Single-file clients (curl-and-run)
+
+Prefer no Node? Each of these is **self-contained, zero dependencies**, and
+downloadable on its own:
 
 | File | Runtime | Run |
 |---|---|---|
@@ -42,11 +75,15 @@ The client derives the relay endpoints (`…/<session>/inbox` and
 
 ## Commands
 
+With the npx CLI (`npx -y mcp-relay-client <url> …`) or any single-file client
+(`bash connect.sh <url> …`):
+
 ```bash
-connect <url> tools                  # initialize + list the host's tools
-connect <url> call <name> ['<json>']  # call a tool (arguments default to {})
-connect <url> send '<jsonrpc-frame>'  # send a raw JSON-RPC 2.0 frame
-connect <url> watch                   # stream every frame the host emits
+<url>                          # (npx only) stdio MCP bridge — mount in an MCP client
+<url> tools                    # initialize + list the host's tools
+<url> call <name> ['<json>']    # call a tool (arguments default to {})
+<url> send '<jsonrpc-frame>'    # send a raw JSON-RPC 2.0 frame
+<url> watch                     # stream every frame the host emits
 ```
 
 ### Example — drive the Agent Playground
@@ -62,11 +99,11 @@ bash connect.sh "$URL" call whiteboard_add_sticky '{"x":300,"y":200,"text":"hell
 
 ## Environment
 
-| Var | Default | Meaning |
-|---|---|---|
-| `MCP_TOKEN` | — | Token, if not inline in the URL. |
-| `MCP_RELAY_PATH` | `whiteboard-share` | Relay mount path (apps that mount it elsewhere). |
-| `MCP_INSECURE` | unset | Skip TLS verification (self-signed certs / local dev only). |
+| Var | Flag (npx CLI) | Default | Meaning |
+|---|---|---|---|
+| `MCP_TOKEN` | `--token <tok>` | — | Token, if not inline in the URL. |
+| `MCP_RELAY_PATH` | `--relay <path>` | `whiteboard-share` | Relay mount path (apps that mount it elsewhere). |
+| `MCP_INSECURE` | `--insecure` | unset | Skip TLS verification (self-signed certs / local dev only). |
 
 ## How it works
 

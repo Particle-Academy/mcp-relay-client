@@ -8,3 +8,6 @@ connect.exe
 .vscode/
 node_modules/
 __pycache__/
+# npm package build output
+dist/
+*.tsbuildinfo

@@ -1,0 +1,39 @@
+name: Publish to npm
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Install
+        run: npm ci
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      # Trusted Publishing (OIDC) — no token. Configure the Trusted Publisher on
+      # npmjs.com for the `mcp-relay-client` package (Settings → Publishing access).
+      # First publish is chicken-and-egg: a package must exist before you can add
+      # a trusted publisher, so do ONE manual `npm publish` to bootstrap, then this
+      # workflow takes over. OIDC needs npm 11.5+; the runner ships npm 10, so use
+      # a fresh npm via npx for the publish.
+      - name: Publish
+        run: npx -y npm@latest publish --provenance --access public
