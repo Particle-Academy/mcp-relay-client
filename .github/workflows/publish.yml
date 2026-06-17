@@ -29,13 +29,10 @@ jobs:
       - name: Build
         run: npm run build
 
-      # TOKEN BOOTSTRAP (one-time) — a Trusted Publisher can't be configured for a
-      # package that doesn't exist yet, so the very first publish authenticates with
-      # a short-lived granular npm token from the `NPM_TOKEN` repo secret. After
-      # this publishes once: add the Trusted Publisher on npmjs.com, revoke the
-      # token, and drop the `env:` block below so subsequent releases ship via OIDC.
-      # OIDC needs npm 11.5+; the runner ships npm 10, so publish via a fresh npm.
+      # Trusted Publishing (OIDC) — no token. The package was bootstrapped with a
+      # one-time NPM_TOKEN; configure the Trusted Publisher on npmjs.com
+      # (Particle-Academy/mcp-relay-client → publish.yml) and revoke that token so
+      # every release ships via OIDC. OIDC needs npm 11.5+; the runner ships npm 10,
+      # so publish via a fresh npm.
       - name: Publish
         run: npx -y npm@latest publish --provenance --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
