@@ -1,6 +1,6 @@
 {
   "name": "mcp-relay-client",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Zero-install MCP client + stdio bridge for agent-integrations relay sessions. Point any MCP client (Claude Code/Desktop/Cursor) — or your shell — at a live browser-hosted Fancy UI MCP server.",
   "repository": {
     "type": "git",
