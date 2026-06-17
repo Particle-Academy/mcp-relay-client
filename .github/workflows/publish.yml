@@ -29,11 +29,13 @@ jobs:
       - name: Build
         run: npm run build
 
-      # Trusted Publishing (OIDC) — no token. Configure the Trusted Publisher on
-      # npmjs.com for the `mcp-relay-client` package (Settings → Publishing access).
-      # First publish is chicken-and-egg: a package must exist before you can add
-      # a trusted publisher, so do ONE manual `npm publish` to bootstrap, then this
-      # workflow takes over. OIDC needs npm 11.5+; the runner ships npm 10, so use
-      # a fresh npm via npx for the publish.
+      # TOKEN BOOTSTRAP (one-time) — a Trusted Publisher can't be configured for a
+      # package that doesn't exist yet, so the very first publish authenticates with
+      # a short-lived granular npm token from the `NPM_TOKEN` repo secret. After
+      # this publishes once: add the Trusted Publisher on npmjs.com, revoke the
+      # token, and drop the `env:` block below so subsequent releases ship via OIDC.
+      # OIDC needs npm 11.5+; the runner ships npm 10, so publish via a fresh npm.
       - name: Publish
         run: npx -y npm@latest publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
