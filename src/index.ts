@@ -85,6 +85,32 @@ async function readSSE(
   }
 }
 
+type PollPayload = { subscriber?: string; frames?: Array<Frame | string> };
+
+async function pollOnce(url: string, subscriber: string, wait: number, signal: AbortSignal): Promise<PollPayload> {
+  const suffix = `${url}&wait=${wait}${subscriber ? `&subscriber=${encodeURIComponent(subscriber)}` : ""}`;
+  const res = await fetch(suffix, { signal, headers: { accept: "application/json", "cache-control": "no-cache" } });
+  if (!res.ok) throw new Error(`long-poll failed (${res.status})`);
+  return (await res.json()) as PollPayload;
+}
+
+async function readPoll(
+  url: string,
+  subscriber: string,
+  onFrame: (frame: Frame) => void,
+  signal: AbortSignal,
+): Promise<void> {
+  let current = subscriber;
+  while (!signal.aborted) {
+    const payload = await pollOnce(url, current, 20_000, signal);
+    current = payload.subscriber ?? current;
+    for (const raw of payload.frames ?? []) {
+      const frame = typeof raw === "string" ? JSON.parse(raw) as Frame : raw;
+      onFrame(frame);
+    }
+  }
+}
+
 function post(inbox: string, frame: Frame): Promise<unknown> {
   return fetch(inbox, {
     method: "POST",
@@ -103,13 +129,24 @@ async function bridge(ep: Endpoints): Promise<void> {
   const ac = new AbortController();
   let closing = false;
 
-  // Relay → stdout, with reconnect (the SSE drops on idle/redeploy).
+  let readyResolve!: () => void;
+  const ready = new Promise<void>((resolve) => { readyResolve = resolve; });
+
+  // Relay → stdout. Long-poll is the CDN-safe path and does not pin a PHP SSE worker.
   void (async () => {
     let attempt = 0;
     while (!closing) {
       try {
-        await readSSE(
-          ep.events,
+        const opened = await pollOnce(ep.poll, "", 0, ac.signal);
+        const subscriber = opened.subscriber ?? "";
+        for (const raw of opened.frames ?? []) {
+          const frame = typeof raw === "string" ? JSON.parse(raw) as Frame : raw;
+          process.stdout.write(JSON.stringify(frame) + "\n");
+        }
+        readyResolve();
+        await readPoll(
+          ep.poll,
+          subscriber,
           (frame) => process.stdout.write(JSON.stringify(frame) + "\n"),
           ac.signal,
         );
@@ -117,7 +154,7 @@ async function bridge(ep: Endpoints): Promise<void> {
       } catch (e) {
         if (closing) return;
         process.stderr.write(
-          `mcp-relay-client: SSE ${e instanceof Error ? e.message : String(e)} — reconnecting\n`,
+          `mcp-relay-client: relay ${e instanceof Error ? e.message : String(e)} — reconnecting\n`,
         );
       }
       if (closing) return;
@@ -127,7 +164,7 @@ async function bridge(ep: Endpoints): Promise<void> {
 
   // stdin → relay inbox (each line is one JSON-RPC frame).
   const rl = createInterface({ input: process.stdin });
-  rl.on("line", (line) => {
+  rl.on("line", async (line) => {
     const t = line.trim();
     if (!t) return;
     let frame: Frame;
@@ -137,6 +174,7 @@ async function bridge(ep: Endpoints): Promise<void> {
       process.stderr.write("mcp-relay-client: skipping non-JSON stdin line\n");
       return;
     }
+    await ready;
     post(ep.inbox, frame).catch((e) =>
       process.stderr.write(`mcp-relay-client: inbox POST failed: ${e}\n`),
     );
@@ -162,8 +200,10 @@ async function command(ep: Endpoints, cmd: string, rest: string[]): Promise<void
   const ac = new AbortController();
   const pending = new Map<number | string, (f: Frame) => void>();
 
-  readSSE(
-    ep.events,
+  const opened = await pollOnce(ep.poll, "", 0, ac.signal);
+  readPoll(
+    ep.poll,
+    opened.subscriber ?? "",
     (frame) => {
       if (frame.id != null && pending.has(frame.id)) {
         pending.get(frame.id)!(frame);
@@ -181,7 +221,7 @@ async function command(ep: Endpoints, cmd: string, rest: string[]): Promise<void
       }, timeout);
     });
 
-  await new Promise((r) => setTimeout(r, 1000)); // let the SSE subscribe (pings host)
+  const initializeResult = awaitId(1);
   await post(ep.inbox, {
     jsonrpc: "2.0",
     id: 1,
@@ -192,15 +232,16 @@ async function command(ep: Endpoints, cmd: string, rest: string[]): Promise<void
       clientInfo: { name: "mcp-relay-client", version: VERSION },
     },
   });
-  if ((await awaitId(1)) === null) {
+  if ((await initializeResult) === null) {
     die("no response — is the session live and the host connected?");
   }
   await post(ep.inbox, { jsonrpc: "2.0", method: "notifications/initialized" });
 
   let result: Frame | null;
   if (cmd === "tools") {
+    const response = awaitId(2);
     await post(ep.inbox, { jsonrpc: "2.0", id: 2, method: "tools/list" });
-    result = await awaitId(2);
+    result = await response;
   } else if (cmd === "call") {
     const name = rest[0];
     if (!name) die("usage: <url> call <name> ['<json-args>']");
@@ -212,8 +253,9 @@ async function command(ep: Endpoints, cmd: string, rest: string[]): Promise<void
         die("call arguments must be valid JSON");
       }
     }
+    const response = awaitId(3);
     await post(ep.inbox, { jsonrpc: "2.0", id: 3, method: "tools/call", params: { name, arguments: args } });
-    result = await awaitId(3);
+    result = await response;
   } else if (cmd === "send") {
     if (!rest[0]) die("usage: <url> send '<jsonrpc-frame>'");
     let frame: Frame;
@@ -222,8 +264,9 @@ async function command(ep: Endpoints, cmd: string, rest: string[]): Promise<void
     } catch {
       die("send frame must be valid JSON");
     }
+    const response = frame.id != null ? awaitId(frame.id) : null;
     await post(ep.inbox, frame);
-    result = frame.id != null ? await awaitId(frame.id) : null;
+    result = response ? await response : null;
   } else {
     die(`unknown command: ${cmd} (use tools | call | send | watch, or omit for the stdio bridge)`);
   }
@@ -241,7 +284,13 @@ async function watch(ep: Endpoints): Promise<void> {
     ac.abort();
     process.exit(0);
   });
-  await readSSE(ep.events, (frame) => process.stdout.write(JSON.stringify(frame) + "\n"), ac.signal);
+  const opened = await pollOnce(ep.poll, "", 0, ac.signal);
+  await readPoll(
+    ep.poll,
+    opened.subscriber ?? "",
+    (frame) => process.stdout.write(JSON.stringify(frame) + "\n"),
+    ac.signal,
+  );
 }
 
 async function main(): Promise<void> {

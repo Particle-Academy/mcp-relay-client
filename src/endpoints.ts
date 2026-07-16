@@ -1,7 +1,7 @@
 // Pure URL → relay-endpoint resolution. Kept dependency-free + side-effect-free
 // so it's unit-testable without touching the network.
 
-export type Endpoints = { session: string; inbox: string; events: string };
+export type Endpoints = { session: string; inbox: string; events: string; poll: string };
 
 export type EndpointOptions = {
   /** Explicit token; falls back to ?token=/?key= in the URL. */
@@ -49,5 +49,6 @@ export function endpoints(rawUrl: string, opts: EndpointOptions = {}): Endpoints
     session,
     inbox: `${base}/${session}/inbox?${q}`,
     events: `${base}/${session}/events?${q}&direction=outbound`,
+    poll: `${base}/${session}/poll?${q}&direction=outbound`,
   };
 }
