@@ -205,6 +205,25 @@ async function command(ep: Endpoints, cmd: string, rest: string[]): Promise<void
     ep.poll,
     opened.subscriber ?? "",
     (frame) => {
+      if (frame.method === "notifications/agent_activity") {
+        const params = frame.params as { source?: string; action?: string; meta?: unknown; target?: { label?: string } } | undefined;
+        if (params?.source === "user" && pending.size > 0) {
+          const detail = params.target?.label ?? params.action ?? "Human interaction";
+          for (const [id, resolve] of pending) {
+            resolve({
+              jsonrpc: "2.0",
+              id,
+              error: {
+                code: -32001,
+                message: `Human took control: ${detail}. The pending agent action was cancelled; call page_describe before acting again.`,
+                data: params.meta,
+              },
+            });
+          }
+          pending.clear();
+          return;
+        }
+      }
       if (frame.id != null && pending.has(frame.id)) {
         pending.get(frame.id)!(frame);
         pending.delete(frame.id);
