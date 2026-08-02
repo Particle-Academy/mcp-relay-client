@@ -12,6 +12,33 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## 0.1.3 — 2026-07-15
+
+### Fixed
+
+- cancel relay calls on human takeover
+
+## 0.1.2 — 2026-07-15
+
+### Fixed
+
+- make relay client adaptive and race-free
+
+## 0.1.1 — 2026-06-16
+
+- Maintenance only (2 internal commits).
+
+## 0.1.0 — 2026-06-16
+
+### Added
+
+- npx CLI — zero-install MCP client + stdio bridge
+- super-lite single-file MCP relay clients (bash / python / ts / go)
+
+### Changed
+
+- default relay path → agent-relay
+
 ### Fixed
 
 - **`connect.sh` could not invoke a single tool, and said nothing about it.**
