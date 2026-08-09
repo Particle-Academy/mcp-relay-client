@@ -1,0 +1,83 @@
+{
+  "$comment": "SHARED CONFORMANCE FIXTURES — endpoint resolution. Asserted by EVERY implementation in this repo (the TS library, and the connect.* single-file clients), in this repo's own CI, on every push. See ../CONFORMANCE.md. Adding a language means adding an assertion of THIS table, never a second table.",
+  "version": 1,
+  "defaults": {
+    "relayPath": "agent-relay",
+    "$comment": "The library default. The four single-file clients defaulted to `whiteboard-share` for months — still routed, because the server keeps that prefix as a back-compat alias, which is exactly why nobody noticed."
+  },
+  "cases": [
+    {
+      "name": "share URL with ?session and ?token",
+      "url": "https://ui.particle.academy/agent-playground?session=ABC&token=XYZ",
+      "expect": {
+        "session": "ABC",
+        "inbox": "https://ui.particle.academy/agent-relay/ABC/inbox?token=XYZ",
+        "events": "https://ui.particle.academy/agent-relay/ABC/events?token=XYZ&direction=outbound",
+        "poll": "https://ui.particle.academy/agent-relay/ABC/poll?token=XYZ&direction=outbound"
+      }
+    },
+    {
+      "name": "?key= is accepted as an alias for ?token=",
+      "url": "https://x.test/?session=S1&key=K1",
+      "expect": {
+        "session": "S1",
+        "inbox": "https://x.test/agent-relay/S1/inbox?token=K1",
+        "events": "https://x.test/agent-relay/S1/events?token=K1&direction=outbound",
+        "poll": "https://x.test/agent-relay/S1/poll?token=K1&direction=outbound"
+      }
+    },
+    {
+      "name": "direct path URL, trailing leg stripped",
+      "url": "https://x.test/whiteboard-share/S2/events?token=T2",
+      "expect": {
+        "session": "S2",
+        "inbox": "https://x.test/whiteboard-share/S2/inbox?token=T2",
+        "events": "https://x.test/whiteboard-share/S2/events?token=T2&direction=outbound",
+        "poll": "https://x.test/whiteboard-share/S2/poll?token=T2&direction=outbound"
+      }
+    },
+    {
+      "name": "direct path URL with no trailing leg",
+      "url": "https://x.test/agent-relay/S3?token=T3",
+      "expect": {
+        "session": "S3",
+        "inbox": "https://x.test/agent-relay/S3/inbox?token=T3",
+        "events": "https://x.test/agent-relay/S3/events?token=T3&direction=outbound",
+        "poll": "https://x.test/agent-relay/S3/poll?token=T3&direction=outbound"
+      }
+    },
+    {
+      "name": "explicit relayPath overrides the default",
+      "url": "https://x.test/?session=S4&token=T4",
+      "options": { "relayPath": "custom-relay" },
+      "expect": {
+        "session": "S4",
+        "inbox": "https://x.test/custom-relay/S4/inbox?token=T4",
+        "events": "https://x.test/custom-relay/S4/events?token=T4&direction=outbound",
+        "poll": "https://x.test/custom-relay/S4/poll?token=T4&direction=outbound"
+      }
+    },
+    {
+      "name": "token is URL-encoded",
+      "url": "https://x.test/?session=S5&token=a%2Fb%2Bc",
+      "expect": {
+        "session": "S5",
+        "inbox": "https://x.test/agent-relay/S5/inbox?token=a%2Fb%2Bc",
+        "events": "https://x.test/agent-relay/S5/events?token=a%2Fb%2Bc&direction=outbound",
+        "poll": "https://x.test/agent-relay/S5/poll?token=a%2Fb%2Bc&direction=outbound"
+      }
+    }
+  ],
+  "errors": [
+    {
+      "name": "no token anywhere is an error, not a silent unauthenticated connect",
+      "url": "https://x.test/?session=S6",
+      "expectErrorContains": "token"
+    },
+    {
+      "name": "no session id is an error",
+      "url": "https://x.test/?token=T7",
+      "expectErrorContains": "session"
+    }
+  ]
+}

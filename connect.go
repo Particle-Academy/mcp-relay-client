@@ -16,7 +16,7 @@
 // <url> is whatever connection URL you were handed; the token (the "inline
 // key") may be in it (?token=… / ?key=…) or supplied via MCP_TOKEN.
 //
-// Env: MCP_TOKEN, MCP_RELAY_PATH (default whiteboard-share), MCP_INSECURE (skip TLS).
+// Env: MCP_TOKEN, MCP_RELAY_PATH (default agent-relay), MCP_INSECURE (skip TLS).
 package main
 
 import (
@@ -42,10 +42,10 @@ func relayPath() string {
 	if p := os.Getenv("MCP_RELAY_PATH"); p != "" {
 		return p
 	}
-	return "whiteboard-share"
+	return "agent-relay"
 }
 
-func endpoints(raw string) (inbox, events string) {
+func endpoints(raw string) (session, inbox, events, poll string) {
 	u, err := url.Parse(raw)
 	if err != nil {
 		die("bad url: " + err.Error())
@@ -59,7 +59,7 @@ func endpoints(raw string) (inbox, events string) {
 		token = q.Get("key")
 	}
 	origin := u.Scheme + "://" + u.Host
-	var session, base string
+	var base string
 	if s := q.Get("session"); s != "" {
 		session = s
 		base = origin + "/" + strings.Trim(relayPath(), "/")
@@ -87,8 +87,16 @@ func endpoints(raw string) (inbox, events string) {
 	if session == "" {
 		die("could not determine session from URL")
 	}
-	inbox = fmt.Sprintf("%s/%s/inbox?token=%s", base, session, token)
-	events = fmt.Sprintf("%s/%s/events?token=%s&direction=outbound", base, session, token)
+	// Re-ENCODE: u.Query().Get decoded it, so emitting it raw turns a token
+	// containing "+" into a space server-side and "/" into a path separator.
+	// The TypeScript library uses encodeURIComponent here; this is the same
+	// thing, and the shared fixture table is what caught the difference.
+	tok := url.QueryEscape(token)
+	inbox = fmt.Sprintf("%s/%s/inbox?token=%s", base, session, tok)
+	events = fmt.Sprintf("%s/%s/events?token=%s&direction=outbound", base, session, tok)
+	// The CDN-safe receive leg. Cloudflare's HTTP/3 edge resets SSE, so a client
+	// that only knows about events silently receives nothing from behind it.
+	poll = fmt.Sprintf("%s/%s/poll?token=%s&direction=outbound", base, session, tok)
 	return
 }
 
@@ -178,7 +186,20 @@ func main() {
 		os.Exit(2)
 	}
 	url, cmd, rest := args[0], args[1], args[2:]
-	inbox, events := endpoints(url)
+	session, inbox, events, poll := endpoints(url)
+
+	// Conformance hook — resolve and print, so this client can be asserted
+	// against conformance/endpoints.json in CI like every other implementation
+	// of this contract. Without it connect.go is never even COMPILED by any
+	// test, let alone run, and drifts freely — which is what happened.
+	if cmd == "--print-endpoints" {
+		out, _ := json.Marshal(map[string]string{
+			"session": session, "inbox": inbox, "events": events, "poll": poll,
+		})
+		fmt.Println(string(out))
+		return
+	}
+
 	r := newRelay(inbox, events)
 
 	if cmd == "watch" {

@@ -17,6 +17,19 @@ jobs:
         with:
           node-version: "22"
 
+      # Python and Go are installed because this repo ships single-file clients
+      # in FOUR languages and CI previously ran none of them: connect.go was
+      # never compiled, connect.py never imported, connect.sh never executed.
+      # They diverged from src/ in nine ways as a direct result. The conformance
+      # step below runs all four against one fixture table — which needs the
+      # runtimes present, or it skips them and reports the skip as a failure.
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.23"
+
       # Standalone CI has no pnpm workspace, so rewrite any `workspace:*` deps to
       # a plain range before install. A no-op when there are none.
       - name: Rewrite workspace protocol
@@ -34,3 +47,14 @@ jobs:
 
       - name: Build
         run: npm run build --if-present
+
+      # The shared conformance table, asserted by every single-file client.
+      # `npm test` covers the TypeScript library's half.
+      - name: Conformance — single-file clients
+        run: node scripts/conformance-clients.mjs
+
+      # go vet is not covered by the conformance run: that only proves the
+      # program compiles enough to print endpoints, not that the rest of the
+      # file is sound.
+      - name: Vet connect.go
+        run: go vet ./connect.go

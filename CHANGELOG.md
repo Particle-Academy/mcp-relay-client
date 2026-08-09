@@ -12,6 +12,52 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.3.0] — 2026-08-09
+
+### Fixed
+
+- **All four single-file clients were sending a token that had been decoded and
+  never re-encoded.** A token containing `+` arrived at the server as a space
+  and one containing `/` as a path separator, so authentication failed for any
+  session whose token happened to include either. `connect.go`, `connect.py`
+  and `connect.ts` all had it; `connect.sh` did not, by accident — it extracts
+  the raw value with a regex instead of parsing.
+
+  This was found by the new conformance runner, and it is not in the nine
+  divergences the polyglot plan had already catalogued. It was a tenth.
+
+- **The four clients defaulted to the `whiteboard-share` relay mount**, which
+  the library stopped using. It kept working only because the server keeps that
+  prefix as a back-compat alias — which is exactly why a wrong default survived
+  unnoticed. All four now default to `agent-relay`.
+
+### Added
+
+- **`conformance/endpoints.json`** — one shared fixture table for endpoint
+  resolution, and **`scripts/conformance-clients.mjs`**, which asserts every
+  single-file client against it. `npm test` covers the library's half.
+
+  CI now installs Python and Go and runs both halves on every push. It
+  previously ran neither: `connect.go` was never compiled, `connect.py` never
+  imported, `connect.sh` never executed — five implementations of one contract
+  with a test suite that exercised one.
+
+  A runtime that is not installed is reported as a SKIP and, if every client is
+  skipped, fails the run. A missing toolchain must not read as a pass; that is
+  the failure mode where `skipIf(!HAS_PHP)` turns a runner without PHP into a
+  green build with zero coverage.
+
+- Each client gained a `--print-endpoints` mode — the seam the conformance
+  runner drives. It is also the smallest thing that makes a shell script
+  testable at all.
+
+- The `poll` endpoint is now resolved by every client. Cloudflare's HTTP/3 edge
+  resets SSE, so a client that only knows about `events` silently receives
+  nothing from behind it. **Resolving the URL is not the same as using it** —
+  the long-poll receive loop is still only in the library, and is the remaining
+  half of that fix.
+
+
 ## 0.2.0 — 2026-08-07
 
 ### Changed

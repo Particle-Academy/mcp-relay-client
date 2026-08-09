@@ -17,10 +17,10 @@ Usage:
 <url> is whatever connection URL you were handed; the token (the "inline key")
 may be in it (?token=… or ?key=…) or supplied via MCP_TOKEN. Forms:
   https://host/agent-playground?session=ABC&token=XYZ
-  https://host/whiteboard-share/ABC?token=XYZ
-  https://host/whiteboard-share/ABC/inbox?token=XYZ
+  https://host/agent-relay/ABC?token=XYZ
+  https://host/agent-relay/ABC/inbox?token=XYZ
 
-Env: MCP_TOKEN, MCP_RELAY_PATH (default whiteboard-share), MCP_INSECURE (skip TLS).
+Env: MCP_TOKEN, MCP_RELAY_PATH (default agent-relay), MCP_INSECURE (skip TLS).
 """
 import json
 import os
@@ -31,7 +31,7 @@ import time
 import urllib.parse
 import urllib.request
 
-RELAY_PATH = os.environ.get("MCP_RELAY_PATH", "whiteboard-share")
+RELAY_PATH = os.environ.get("MCP_RELAY_PATH", "agent-relay")
 INSECURE = bool(os.environ.get("MCP_INSECURE"))
 SSL_CTX = ssl._create_unverified_context() if INSECURE else None
 
@@ -60,9 +60,15 @@ def endpoints(url):
         die("no token in URL and MCP_TOKEN unset")
     if not session:
         die("could not determine session from URL")
-    inbox = "%s/%s/inbox?token=%s" % (base, session, token)
-    events = "%s/%s/events?token=%s&direction=outbound" % (base, session, token)
-    return inbox, events
+    # Re-ENCODE: parse_qs decoded it, so emitting it raw turns a token
+    # containing "+" into a space server-side and "/" into a path separator.
+    tok = urllib.parse.quote(token, safe="")
+    inbox = "%s/%s/inbox?token=%s" % (base, session, tok)
+    events = "%s/%s/events?token=%s&direction=outbound" % (base, session, tok)
+    # The CDN-safe receive leg. Cloudflare's HTTP/3 edge resets SSE, so a client
+    # that only knows about `events` silently receives nothing from behind it.
+    poll = "%s/%s/poll?token=%s&direction=outbound" % (base, session, tok)
+    return session, inbox, events, poll
 
 
 class Relay:
@@ -113,13 +119,25 @@ class Relay:
         return None
 
 
+def print_endpoints(url):
+    """Conformance hook — resolve and print, so this client can be asserted
+    against conformance/endpoints.json in CI like every other implementation of
+    this contract. Without it the Python client is never imported by any test
+    and drifts freely, which is what happened."""
+    session, inbox, events, poll = endpoints(url)
+    print(json.dumps({"session": session, "inbox": inbox, "events": events, "poll": poll}))
+
+
 def main():
     args = sys.argv[1:]
+    if len(args) == 2 and args[1] == "--print-endpoints":
+        print_endpoints(args[0])
+        return
     if len(args) < 2:
         sys.stderr.write(__doc__)
         sys.exit(2)
     url, cmd, rest = args[0], args[1], args[2:]
-    inbox, events = endpoints(url)
+    _session, inbox, events, _poll = endpoints(url)
     relay = Relay(inbox, events)
 
     if cmd == "watch":

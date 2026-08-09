@@ -22,12 +22,12 @@
 // <url> is whatever connection URL you were handed; the token (the "inline
 // key") may be in it (?token=… / ?key=…) or supplied via MCP_TOKEN.
 //
-// Env: MCP_TOKEN, MCP_RELAY_PATH (default whiteboard-share), MCP_INSECURE (skip TLS).
+// Env: MCP_TOKEN, MCP_RELAY_PATH (default agent-relay), MCP_INSECURE (skip TLS).
 
 // Skip TLS verification for self-signed certs (local dev) — must run before fetch.
 if (process.env.MCP_INSECURE) process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
 
-const RELAY_PATH = process.env.MCP_RELAY_PATH || "whiteboard-share";
+const RELAY_PATH = process.env.MCP_RELAY_PATH || "agent-relay";
 
 type Frame = { jsonrpc: string; id?: number | string; method?: string; result?: unknown; error?: unknown; params?: unknown };
 
@@ -36,7 +36,7 @@ function die(msg: string): never {
   process.exit(1);
 }
 
-function endpoints(rawUrl: string): { inbox: string; events: string } {
+function endpoints(rawUrl: string): { session: string; inbox: string; events: string; poll: string } {
   const u = new URL(rawUrl);
   const token = process.env.MCP_TOKEN || u.searchParams.get("token") || u.searchParams.get("key") || "";
   const origin = u.origin;
@@ -53,10 +53,21 @@ function endpoints(rawUrl: string): { inbox: string; events: string } {
     base = origin + segs.slice(0, -1).map((s) => "/" + s).join("");
   }
   if (!token) die("no token in URL and MCP_TOKEN unset");
+
+  // Re-ENCODE: searchParams.get decoded it, so emitting it raw turns a token
+  // containing "+" into a space server-side and "/" into a path separator. The
+  // library does this with encodeURIComponent; the shared fixture table is what
+  // caught the three clients that did not.
+  const tok = encodeURIComponent(token);
   if (!session) die("could not determine session from URL");
   return {
-    inbox: `${base}/${session}/inbox?token=${token}`,
-    events: `${base}/${session}/events?token=${token}&direction=outbound`,
+    session,
+    inbox: `${base}/${session}/inbox?token=${tok}`,
+    events: `${base}/${session}/events?token=${tok}&direction=outbound`,
+    // The CDN-safe receive leg. Cloudflare's HTTP/3 edge resets SSE, so a
+    // client that only knows about `events` silently receives nothing from
+    // behind it.
+    poll: `${base}/${session}/poll?token=${tok}&direction=outbound`,
   };
 }
 
@@ -66,6 +77,14 @@ async function main(): Promise<void> {
     process.stderr.write("usage: connect.ts <url> {tools|call <name> [json]|send <frame>|watch}\n");
     process.exit(2);
   }
+  // Conformance hook — resolve and print, so this client can be asserted
+  // against conformance/endpoints.json in CI like every other implementation of
+  // this contract.
+  if (cmd === "--print-endpoints") {
+    console.log(JSON.stringify(endpoints(url)));
+    return;
+  }
+
   const { inbox, events } = endpoints(url);
 
   const pending = new Map<number | string, (f: Frame) => void>();

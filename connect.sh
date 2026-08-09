@@ -18,10 +18,10 @@
 # <url> is whatever connection URL you were handed. The token (the "inline key")
 # may be in the URL (?token=… or ?key=…) or supplied via MCP_TOKEN. Forms:
 #   https://host/agent-playground?session=ABC&token=XYZ
-#   https://host/whiteboard-share/ABC?token=XYZ
-#   https://host/whiteboard-share/ABC/inbox?token=XYZ
+#   https://host/agent-relay/ABC?token=XYZ
+#   https://host/agent-relay/ABC/inbox?token=XYZ
 #
-# Env: MCP_TOKEN (token), MCP_RELAY_PATH (relay mount, default whiteboard-share).
+# Env: MCP_TOKEN (token), MCP_RELAY_PATH (relay mount, default agent-relay).
 set -euo pipefail
 
 URL="${1:-}"; CMD="${2:-}"
@@ -30,7 +30,7 @@ URL="${1:-}"; CMD="${2:-}"
 }
 shift 2
 
-RELAY_PATH="${MCP_RELAY_PATH:-whiteboard-share}"
+RELAY_PATH="${MCP_RELAY_PATH:-agent-relay}"
 ORIGIN=$(printf '%s' "$URL" | sed -E 's#^(https?://[^/]+).*#\1#')
 PATHQ=$(printf '%s' "$URL" | sed -E 's#^https?://[^/]+##')
 
@@ -55,6 +55,19 @@ fi
 
 INBOX="$BASE/$SESSION/inbox?token=$TOKEN"
 EVENTS="$BASE/$SESSION/events?token=$TOKEN&direction=outbound"
+# The CDN-safe receive leg. Cloudflare's HTTP/3 edge resets SSE, so a client
+# that only knows about $EVENTS silently receives nothing from behind it.
+POLL="$BASE/$SESSION/poll?token=$TOKEN&direction=outbound"
+
+# Conformance hook: print the resolved endpoints and exit, so this script can be
+# asserted against conformance/endpoints.json in CI like every other
+# implementation of this contract. Without it the shell client is never executed
+# by any test and drifts freely, which is what happened.
+if [ "$CMD" = "--print-endpoints" ]; then
+  printf '{"session":"%s","inbox":"%s","events":"%s","poll":"%s"}
+'     "$SESSION" "$INBOX" "$EVENTS" "$POLL"
+  exit 0
+fi
 
 pretty() { # pretty-print JSON from stdin, falling back to raw
   if command -v jq >/dev/null 2>&1; then jq . 2>/dev/null || cat
