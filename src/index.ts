@@ -13,8 +13,26 @@
 import process from "node:process";
 import { createInterface } from "node:readline";
 import { endpoints, type Endpoints } from "./endpoints.js";
+import { readFileSync } from "node:fs";
 
-const VERSION = "0.1.0";
+/**
+ * This package's version, read from `package.json` rather than duplicated here.
+ *
+ * The literal it replaces said "0.1.0" while the package shipped as 0.3.0, and
+ * the comment beside it asked a human to remember to bump both — which is the
+ * failure, not the mitigation. Every version surface in this estate that was a
+ * second copy had drifted, including one a user hit: `fancy-flow-py` reported
+ * 0.1.0 from a 0.4.0 install for three releases.
+ *
+ * `../package.json` resolves from `src/` and from `dist/` alike (both are one
+ * level below the package root), and npm always ships package.json regardless
+ * of the `files` list.
+ */
+const VERSION: string = (
+  JSON.parse(
+    readFileSync(new URL("../package.json", import.meta.url), "utf8"),
+  ) as { version: string }
+).version;
 
 type Frame = {
   jsonrpc: string;
