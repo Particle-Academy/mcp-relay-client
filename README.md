@@ -1,6 +1,6 @@
 # mcp-relay-client
 
-[![Fancy UI suite](art/fancy-ui.svg)](https://particle.academy)
+[![Fancified](art/fancified.svg)](https://particle.academy)
 
 Connect an agent to a **session-based MCP relay** — the protocol shipped by
 [`@particle-academy/agent-integrations`](https://ui.particle.academy). Point it
