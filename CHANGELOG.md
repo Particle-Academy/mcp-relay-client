@@ -17,6 +17,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - **The client advertised 0.1.0 while the package shipped as 0.3.0.** A literal with nothing comparing it to `package.json`. It now reads `package.json` at runtime; `version.test.ts` fails if a literal returns.
 
+### Security
+
+- `source-map-js` is pinned forward to `^1.2.2` via `overrides`. Versions up to
+  1.2.1 allow an event-loop denial of service through indexed source-map section
+  offsets, and it arrives here transitively through the build toolchain.
+  **Nothing for a consumer to do, and no runtime change**: an npm package does
+  not ship a lockfile, so this governs builds OF this repo, not anything
+  installed FROM it. Recorded rather than left silent because the override it
+  sits beside — `shell-quote` `^1.9.0`, added for an earlier advisory — was
+  carried with no note of why, and had drifted back inside the vulnerable range
+  before anyone looked.
 
 ## [0.3.0] — 2026-08-09
 
