@@ -19,6 +19,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Security
 
+- Update Vitest to 4.1.12 for security fixes; dev toolchain only, nothing to do.
+
 - `source-map-js` is pinned forward to `^1.2.2` via `overrides`. Versions up to
   1.2.1 allow an event-loop denial of service through indexed source-map section
   offsets, and it arrives here transitively through the build toolchain.
