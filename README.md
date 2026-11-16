@@ -5,7 +5,7 @@
 Connect an agent to a **session-based MCP relay** — the protocol shipped by
 [`@particle-academy/agent-integrations`](https://ui.particle.academy). Point it
 at a relay session URL (the **Add-to-Claude / share link** from any app that
-mounts the relay — the [Fancy UI Agent
+mounts the relay — the [Fancy Dev Kit Agent
 Playground](https://ui.particle.academy/agent-playground) or a site-wide
 co-browse session) and it speaks MCP to whatever app is hosting the session:
 list tools, call them, stream events, or **bridge a real MCP client into the
@@ -124,7 +124,7 @@ MIT © Particle Academy
 
 ---
 
-## ⭐ Star Fancy UI
+## ⭐ Star Fancy Dev Kit
 
 If this package is useful to you, a quick ⭐ on the repo really helps us build a better kit. Thank you!
 
