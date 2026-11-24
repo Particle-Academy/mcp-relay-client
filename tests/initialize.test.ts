@@ -103,7 +103,8 @@ class FakeRelay {
         this.queues.set(sub, []);
       }
       const q = this.queues.get(sub)!;
-      const wait = Math.min(Number(u.searchParams.get("wait") ?? 0), 1000);
+      // A fixed long-poll window, never the requested duration: the request only says whether to wait.
+      const wait = Number(u.searchParams.get("wait") ?? 0) > 0 ? 1000 : 0;
       if (q.length === 0 && wait > 0) {
         await new Promise<void>((done) => {
           const t = setTimeout(done, wait);
