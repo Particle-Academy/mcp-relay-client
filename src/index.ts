@@ -264,7 +264,10 @@ async function command(ep: Endpoints, cmd: string, rest: string[]): Promise<void
     id: 1,
     method: "initialize",
     params: {
-      protocolVersion: "2025-06-18",
+      // MCP lifecycle: request the latest revision we support. The host may
+      // answer an older one; nothing this client sends differs between
+      // revisions, so any answer is accepted (tests/initialize.test.ts).
+      protocolVersion: "2025-11-25",
       capabilities: {},
       clientInfo: { name: "mcp-relay-client", version: VERSION },
     },

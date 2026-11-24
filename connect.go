@@ -213,7 +213,7 @@ func main() {
 	time.Sleep(1 * time.Second) // let SSE subscribe (pings host: peer_joined)
 
 	r.post(frame{"jsonrpc": "2.0", "id": 1, "method": "initialize",
-		"params": frame{"protocolVersion": "2025-06-18", "capabilities": frame{},
+		"params": frame{"protocolVersion": "2025-11-25", "capabilities": frame{},
 			"clientInfo": frame{"name": "connect.go", "version": "1"}}})
 	if r.await(1, 15*time.Second) == nil {
 		die("no response — is the session live and the host connected?")

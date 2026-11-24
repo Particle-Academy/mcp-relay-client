@@ -14,6 +14,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- **All five clients request MCP `2025-11-25`** in `initialize` (was
+  `2025-06-18`): the library, `connect.ts`, `connect.sh`, `connect.py` and
+  `connect.go`. That is the only wire change. The relay is its own transport (a
+  POST inbox plus SSE / long-poll), not Streamable HTTP, so the spec's HTTP-level
+  rules (the `MCP-Protocol-Version` header, Origin checks, `Mcp-Session-Id`) do
+  not apply to it, and nothing these clients send (`initialize`, `tools/list`,
+  `tools/call`) changed between revisions. A host that answers an older
+  revision, as agent-integrations does by default with `2025-06-18`, is still
+  accepted. Consumers do nothing. `tests/initialize.test.ts` runs every client
+  against a fake relay and checks both cases on the wire.
+
 - **CI: the lab-certificate gate verifies against the lab's rotated key list.**
   The lab's first signing key is retired: certificates it already issued still
   verify, and nothing new it signs ever can. Consumers do nothing.

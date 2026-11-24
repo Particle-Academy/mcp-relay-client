@@ -142,7 +142,7 @@ async function main(): Promise<void> {
     });
 
   await new Promise((r) => setTimeout(r, 1000)); // let SSE subscribe (pings host)
-  await post({ jsonrpc: "2.0", id: 1, method: "initialize", params: { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "connect.ts", version: "1" } } });
+  await post({ jsonrpc: "2.0", id: 1, method: "initialize", params: { protocolVersion: "2025-11-25", capabilities: {}, clientInfo: { name: "connect.ts", version: "1" } } });
   if ((await awaitId(1)) === null) die("no response — is the session live and the host connected?");
   await post({ jsonrpc: "2.0", method: "notifications/initialized" });
 

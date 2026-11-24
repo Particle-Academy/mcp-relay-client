@@ -148,7 +148,7 @@ def main():
 
     relay.start()
     relay.post({"jsonrpc": "2.0", "id": 1, "method": "initialize",
-                "params": {"protocolVersion": "2025-06-18", "capabilities": {},
+                "params": {"protocolVersion": "2025-11-25", "capabilities": {},
                            "clientInfo": {"name": "connect.py", "version": "1"}}})
     if relay.await_id(1) is None:
         die("no response — is the session live and the host connected?")

@@ -166,7 +166,7 @@ if [ "$CMD" = "call" ]; then
 fi
 
 sleep 1  # let the SSE subscription register (also pings the host: peer_joined)
-post '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"connect.sh","version":"1"}}}'
+post '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"connect.sh","version":"1"}}}'
 await 1 >/dev/null || { echo "error: no response — is the session live and the host connected?" >&2; exit 1; }
 post '{"jsonrpc":"2.0","method":"notifications/initialized"}'
 
